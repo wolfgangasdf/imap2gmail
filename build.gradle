@@ -1,0 +1,84 @@
+buildscript {
+    ext.kotlin_version = '1.2.30'
+
+    repositories {
+        mavenCentral()
+        jcenter() // shadowJar
+    }
+    dependencies {
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+        classpath 'com.github.jengelman.gradle.plugins:shadow:2.0.2'
+    }
+}
+
+group 'com.wolle'
+version '1.0-SNAPSHOT'
+
+task wrapper(type: Wrapper) {
+    gradleVersion = "4.4.1"
+}
+
+apply plugin: 'kotlin'
+//kotlin {
+//    experimental {
+//        coroutines 'enable'
+//    }
+//}
+
+apply plugin: 'idea'
+idea {
+    module {
+        downloadJavadoc = true
+        downloadSources = true
+    }
+}
+
+apply plugin: 'application'
+mainClassName = "MainKt"
+defaultTasks 'run'
+
+apply plugin: 'com.github.johnrengelman.shadow'
+shadowJar {
+    manifest {
+        attributes 'Description': 'imap to gmail background importer'
+        attributes 'Implementation-Title': 'Imap2Gmail'
+        attributes 'Implementation-Version': version
+        attributes 'Main-Class': 'MainKt'
+        classifier = null
+        version = null
+    }
+    mergeServiceFiles() // essential to enable flac etc
+}
+
+//////////////////
+
+
+repositories {
+    mavenCentral()
+    // jcenter() // for kotlinx.html, aza-css
+}
+
+dependencies {
+    compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
+
+    compile 'io.github.microutils:kotlin-logging:1.4.8'
+    compile group: 'org.slf4j', name: 'slf4j-simple', version: '1.7.25' // no colors, everything stderr
+    compile group: 'javax.mail', name: 'javax.mail-api', version: '1.6.1' // https://mvnrepository.com/artifact/javax.mail/javax.mail-api
+    compile group: 'com.sun.mail', name: 'javax.mail', version: '1.6.1' // https://mvnrepository.com/artifact/com.sun.mail/javax.mail
+
+    // https://developers.google.com/gmail/api/quickstart/java
+    compile 'com.google.api-client:google-api-client:1.23.0'
+    compile 'com.google.oauth-client:google-oauth-client-jetty:1.23.0'
+    compile 'com.google.apis:google-api-services-gmail:v1-rev83-1.23.0'
+}
+
+compileKotlin {
+    kotlinOptions.jvmTarget = "1.8"
+}
+compileTestKotlin {
+    kotlinOptions.jvmTarget = "1.8"
+}
+
+task dist {
+    dependsOn shadowJar // fat jar
+}

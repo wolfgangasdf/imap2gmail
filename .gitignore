@@ -1,0 +1,9 @@
+.idea
+*.iml
+.DS_Store
+.gradle
+.DS_Store
+/build
+/out
+imap2gmail.txt
+/credentials
