@@ -41,9 +41,10 @@ object Imap2Gmail {
         thread(start = true, name = "watchThread", isDaemon = true) {
             while (true) {
                 val currms = System.currentTimeMillis()
-                if (currms - lastIdle.get() > IDLEMS*1.1 && currms - lastIdleTimeoutEmail > 60 * 60 * 1000) {
-                    println("watchThread: idle too long ago!")
-                    ImapMailer.sendMail("Idle timeout!", "")
+                if (currms - lastIdle.get() > 1.5*IDLEMS && currms - lastIdleTimeoutEmail > 60 * 60 * 1000) {
+                    println("watchThread: idle too long ago! ${currms - lastIdle.get()} > ${1.5*IDLEMS}")
+                    ImapMailer.sendMail("Idle timeout!", "Didn't IDLE for ${(currms - lastIdle.get())/(1000*60)} minutes.\n" +
+                            "Check that imap2gmail is working properly, possibly the IMAP server is temporarily down.")
                     lastIdleTimeoutEmail = currms
                 }
                 Thread.sleep(1000)
