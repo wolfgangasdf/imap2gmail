@@ -5,7 +5,7 @@ import javax.mail.Flags
 import kotlin.concurrent.thread
 
 fun getTimestamp(): String {
-    return SimpleDateFormat("yyyyMMdd H:mm:ss").format(Date())
+    return SimpleDateFormat("yyyyMMdd-H:mm:ss").format(Date())
 }
 
 object Imap2Gmail {

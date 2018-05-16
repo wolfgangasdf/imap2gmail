@@ -63,10 +63,11 @@ object GmailStuff {
         try {
             //testing throw InterruptedException("test")
             // get rfc822 raw form of javax message and insert into gmailmessage
+            println("[${getTimestamp()}] downloading message from IMAP...")
             val output = ByteArrayOutputStream()
             message.writeTo(output)
             val rawEmail = output.toByteArray()
-
+            println("[${getTimestamp()}] importing into gmail...")
             val req1 = service!!.users().messages()
                     .gmailImport("me",
                             GmailAPIMessage(),
@@ -91,11 +92,11 @@ object GmailStuff {
             })
 
             val res1 = req1.execute()
-            println("done (${res1.id}), adding labels INBOX and UNREAD...")
+            println("[${getTimestamp()}] done (${res1.id}), adding labels INBOX and UNREAD...")
 
             val req2 = service!!.users().messages().modify("me", res1.id, ModifyMessageRequest().setAddLabelIds(listOf("INBOX", "UNREAD")))
             req2.execute()
-            println("done!")
+            println("[${getTimestamp()}] done!")
         } catch (e: GoogleJsonResponseException) {
             if (e.details.message.equals("Invalid From header", ignoreCase = true)) {
                 throw e

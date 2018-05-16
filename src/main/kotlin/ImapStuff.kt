@@ -56,6 +56,8 @@ object ImapStuff {
 
         //testing throw InterruptedException("test")
 
+        props.setProperty("mail.${imapprotocol}.partialfetch", "false") // otherwise, very large emails come in very slowly and this times out!
+
         session = Session.getInstance(props, null)
         session.debug = false // VERY HELPFUL!
         store = session.getStore(imapprotocol) as IMAPStore
