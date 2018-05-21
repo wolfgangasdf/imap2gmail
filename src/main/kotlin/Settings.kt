@@ -25,7 +25,7 @@ object Settings {
 
     init {
         // Load
-        println("Settings file: $configfile")
+        warn("Settings file: $configfile")
         try {
             if (!configfile.exists()) configfile.createNewFile()
             Files.readAllLines(configfile.toPath()).toSet().forEach { l ->
@@ -37,7 +37,7 @@ object Settings {
                 }
             }
         } catch (e: Exception) {
-            println("Error loading settings, file: ${configfile.path}: ${e.message}")
+            warn("Error loading settings, file: ${configfile.path}: ${e.message}")
             java.lang.System.exit(1)
         }
 

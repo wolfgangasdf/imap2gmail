@@ -63,11 +63,11 @@ object GmailStuff {
         try {
             //testing throw InterruptedException("test")
             // get rfc822 raw form of javax message and insert into gmailmessage
-            println("[${getTimestamp()}] downloading message from IMAP...")
+            debug("downloading message from IMAP...")
             val output = ByteArrayOutputStream()
             message.writeTo(output)
             val rawEmail = output.toByteArray()
-            println("[${getTimestamp()}] importing into gmail...")
+            debug("importing into gmail...")
             val req1 = service!!.users().messages()
                     .gmailImport("me",
                             GmailAPIMessage(),
@@ -88,28 +88,28 @@ object GmailStuff {
                                 }
                             })
             req1.mediaHttpUploader.setProgressListener({ uploader ->
-                println("[${uploader.uploadState}] Progress: ${(uploader.progress * 100).roundToInt()}")
+                debug("[${uploader.uploadState}] Progress: ${(uploader.progress * 100).roundToInt()}")
             })
 
             val res1 = req1.execute()
-            println("[${getTimestamp()}] done (${res1.id}), adding labels INBOX and UNREAD...")
+            debug("done (${res1.id}), adding labels INBOX and UNREAD...")
 
             val req2 = service!!.users().messages().modify("me", res1.id, ModifyMessageRequest().setAddLabelIds(listOf("INBOX", "UNREAD")))
             req2.execute()
-            println("[${getTimestamp()}] done!")
+            debug("done!")
         } catch (e: GoogleJsonResponseException) {
             if (e.details.message.equals("Invalid From header", ignoreCase = true)) {
                 throw e
             }
             throw RuntimeException(e)
         } catch (e: IOException) {
-            println("Failed to upload message!!: \n")
+            warn("Failed to upload message!!: \n")
             throw RuntimeException(e)
         }
     }
 
     fun initialize() {
-        println("initialize gmail...")
+        warn("initialize gmail...")
         val httpTransport = GoogleNetHttpTransport.newTrustedTransport()
         //tesging throw InterruptedException("test")
         service = Gmail.Builder(httpTransport, JSON_FACTORY, getCredentials(httpTransport))
@@ -118,6 +118,6 @@ object GmailStuff {
 
         // test connection
         val res = service!!.users().labels().list("me").execute()
-        println("gmail initialized, have ${res.labels.size} labels!")
+        warn("gmail initialized, have ${res.labels.size} labels!")
     }
 }

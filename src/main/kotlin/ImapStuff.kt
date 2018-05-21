@@ -21,7 +21,7 @@ import javax.mail.internet.MimeMessage
 
 object ImapMailer {
     fun sendMail(subject: String, content: String) {
-        println("sending mail: $subject ...")
+        warn("sending mail: $subject ...")
         val props = System.getProperties()
         val session = Session.getInstance(props, null)
         val email = MimeMessage(session)
@@ -35,7 +35,7 @@ object ImapMailer {
         transp.sendMessage(email, email.allRecipients)
         // could use Transport.send(email) ; doesn't need savechanges and transp!
         transp.close()
-        println("sent mail!")
+        warn("sent mail!")
     }
 }
 
@@ -47,16 +47,16 @@ object ImapStuff {
     private lateinit var session: Session
 
     fun initialize() {
-        println("initialize imap...")
+        warn("initialize imap...")
         val props = System.getProperties()
-        // better don't change...
-//        props.setProperty("mail.${imapprotocol}.timeout", "10000") // Socket I/O timeout value in milliseconds. Default is infinite timeout.
-//        props.setProperty("mail.${imapprotocol}.writetimeout", "5000") //
-//        props.setProperty("mail.${imapprotocol}.connectiontimeout", "10000") // Socket connection timeout value in milliseconds. Default is infinite timeout.
+        // TODO connect to idle time?
+        props.setProperty("mail.$imapprotocol.timeout", (6*60*1000).toString()) // Socket I/O timeout value in milliseconds. Default is infinite timeout.
+        props.setProperty("mail.$imapprotocol.writetimeout", "5000") //
+        props.setProperty("mail.$imapprotocol.connectiontimeout", (6*60*1000).toString()) // Socket connection timeout value in milliseconds. Default is infinite timeout.
 
         //testing throw InterruptedException("test")
 
-        props.setProperty("mail.${imapprotocol}.partialfetch", "false") // otherwise, very large emails come in very slowly and this times out!
+        props.setProperty("mail.$imapprotocol.partialfetch", "false") // otherwise, very large emails come in very slowly and this times out!
 
         session = Session.getInstance(props, null)
         session.debug = false // VERY HELPFUL!
@@ -66,7 +66,7 @@ object ImapStuff {
         fun openFolder(name: String, mode: Int): IMAPFolder {
             val folder = store.getFolder(name)
             if (folder == null || !folder.exists()) {
-                println("error: invalid folder: $name")
+                warn("error: invalid folder: $name")
                 System.exit(1)
             }
             folder.open(mode)
@@ -75,7 +75,7 @@ object ImapStuff {
         folder = openFolder(imapfolder, Folder.READ_WRITE)
         foldermoveto = openFolder(imapfoldermoved, Folder.READ_WRITE)
         //folder.setSubscribed(true) // should not be needed...
-        println("imap initialized!")
+        warn("imap initialized!")
     }
 
 
