@@ -16,11 +16,11 @@ object Settings {
 
     var error = false
     fun getOrSet(key: String, defaultval: String): String {
-        return settings.getOrElse(key, {
+        return settings.getOrElse(key) {
             error = true
             settings[key] = defaultval
             "-1"
-        })
+        }
     }
 
     init {

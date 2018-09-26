@@ -1,5 +1,6 @@
 import Imap2Gmail.imapfolder
 import Imap2Gmail.imapfoldermoved
+import Imap2Gmail.imapfolderquarantine
 import Imap2Gmail.imappass
 import Imap2Gmail.imapport
 import Imap2Gmail.imapprotocol
@@ -43,6 +44,7 @@ object ImapStuff {
 
     lateinit var folder: IMAPFolder
     lateinit var foldermoveto: IMAPFolder
+    lateinit var folderquarantine: IMAPFolder
     private lateinit var store: IMAPStore
     private lateinit var session: Session
 
@@ -63,17 +65,19 @@ object ImapStuff {
         store = session.getStore(imapprotocol) as IMAPStore
         store.connect(imapserver, imapport, imapuser, imappass)
 
-        fun openFolder(name: String, mode: Int): IMAPFolder {
+        fun openOrCreateFolder(name: String, mode: Int): IMAPFolder {
             val folder = store.getFolder(name)
             if (folder == null || !folder.exists()) {
-                warn("error: invalid folder: $name")
-                System.exit(1)
+                warn("error: invalid folder: $name, creating it...")
+                val res = folder.create(Folder.HOLDS_MESSAGES or Folder.READ_WRITE)
+                if (res) warn("Folder created!") else throw Exception("Can't create imap folder $name")
             }
             folder.open(mode)
             return folder as IMAPFolder
         }
-        folder = openFolder(imapfolder, Folder.READ_WRITE)
-        foldermoveto = openFolder(imapfoldermoved, Folder.READ_WRITE)
+        folder = openOrCreateFolder(imapfolder, Folder.READ_WRITE)
+        foldermoveto = openOrCreateFolder(imapfoldermoved, Folder.READ_WRITE)
+        folderquarantine = openOrCreateFolder(imapfolderquarantine, Folder.READ_WRITE)
         //folder.setSubscribed(true) // should not be needed...
         warn("imap initialized!")
     }

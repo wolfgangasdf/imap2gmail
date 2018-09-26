@@ -17,6 +17,7 @@ object Imap2Gmail {
     val imappass = Settings.getOrSet("imappass", "imap password")
     val imapfolder = Settings.getOrSet("imapfolder", "imapfolder to check like INBOX")
     val imapfoldermoved = Settings.getOrSet("imapfoldermoved", "imapfolder to put in moved emails")
+    val imapfolderquarantine = Settings.getOrSet("imapfolderquarantine", "imapfolder to put in failed emails")
     val gmailclientid = Settings.getOrSet("gmailclientid", "imapfolder to check like INBOX")
     val gmailclientsecret = Settings.getOrSet("gmailclientsecret", "imapfolder to check like INBOX")
     val mailfrom = Settings.getOrSet("mailfrom", "notification email From:")
@@ -28,6 +29,7 @@ object Imap2Gmail {
     val mailsmtppass = Settings.getOrSet("mailsmtppass", "smtp password or emtpy")
 
     private const val IDLEMS = 5*60*1000L // ms after which the IMAP idle command is interrupted/refreshed.
+    private const val IDLEMSTIMEOUTFACT = 2.5 // timeout after IDLEMSTIMEOUTFACT*IDLEMS
 
     fun doit() { // NEVER put this in init, must return from init (can't access variables from launched thread there!)
         if (Settings.error) {
@@ -39,27 +41,32 @@ object Imap2Gmail {
         var mainThread: Thread? = null
         var watchThreadIdle: Thread? = null
         val lastIdle = AtomicLong(System.currentTimeMillis())
-        var lastIdleTimeoutEmail = 0L
         // start watchThread which checks for periodic IDLE
         thread(start = true, name = "watchThread", isDaemon = true) {
+            var errorState = false
             while (true) {
                 val currms = System.currentTimeMillis()
-                if (currms - lastIdle.get() > 1.5*IDLEMS && currms - lastIdleTimeoutEmail > 60 * 60 * 1000) {
-                    warn("watchThread: idle too long ago! ${currms - lastIdle.get()} > ${1.5*IDLEMS}")
-                    ImapMailer.sendMail("Idle timeout!", "Didn't IDLE for ${(currms - lastIdle.get())/(1000*60)} minutes.\n" +
-                            "Check that imap2gmail is working properly, possibly the IMAP server is temporarily down.")
-                    lastIdleTimeoutEmail = currms
+                if (currms - lastIdle.get() > IDLEMSTIMEOUTFACT*IDLEMS) {
+                    if (!errorState) {
+                        warn("watchThread: idle too long ago! ${currms - lastIdle.get()} > ${IDLEMSTIMEOUTFACT*IDLEMS}")
+                        ImapMailer.sendMail("Idle timeout!", "Didn't IDLE for ${(currms - lastIdle.get())/(1000*60)} minutes.\n" +
+                                "Check that imap2gmail is working properly, possibly the IMAP server is temporarily down.\n" +
+                                "I will send another email if it works again!")
+                        errorState = true
 
-                    if (watchThreadIdle?.isAlive == true) {
-                        debug("interrupting watchThreadIdle[${watchThreadIdle?.id}]!")
-                        watchThreadIdle?.interrupt()
+                        if (watchThreadIdle?.isAlive == true) {
+                            debug("interrupting watchThreadIdle[${watchThreadIdle?.id}]!")
+                            watchThreadIdle?.interrupt()
+                        }
+
+                        if (mainThread?.isAlive == true) {
+                            debug("interrupting mainThread[${mainThread?.id}]!")
+                            mainThread?.interrupt() // TODO can't interrupt idle() command, mainThread is useless...
+                        }
                     }
-
-                    if (mainThread?.isAlive == true) {
-                        debug("interrupting mainThread[${mainThread?.id}]!")
-                        mainThread?.interrupt() // TODO can't interrupt idle() command...
-                    }
-
+                } else if (errorState) {
+                    ImapMailer.sendMail("Idle succeeded!", "Idle succeeded, everything normal again.")
+                    errorState = false
                 }
                 Thread.sleep(1000)
             }
@@ -85,7 +92,7 @@ object Imap2Gmail {
                         while (ImapStuff.folder.messageCount > 0) {
                             val msgs = ImapStuff.folder.messages
                             debug("Have messages: " + msgs.size)
-                            msgs.forEach { m ->
+                            msgs.reversed().forEach { m ->
                                 debug(" Handling message: ${m.messageNumber}: ${m.subject}")
                                 try {
                                     //testing ImapStuff.store.close()
@@ -98,7 +105,12 @@ object Imap2Gmail {
                                 } catch (e: Exception) {
                                     warn("exception importmessage!!!! " + e.message)
                                     e.printStackTrace()
-                                    throw(e)
+                                    warn("trying to move message to quarantine folder on imap... ${ImapStuff.folderquarantine}")
+                                    ImapStuff.folder.copyMessages(arrayOf(m), ImapStuff.folderquarantine)
+                                    m.setFlag(Flags.Flag.DELETED, true)
+                                    ImapStuff.folder.expunge()
+                                    ImapMailer.sendMail("Message move to quarantine", "One message has been moved to quarantine folder on the IMAP server.")
+                                    warn("message moved to quarantine.")
                                 }
                             }
                         }
@@ -132,6 +144,7 @@ object Imap2Gmail {
                     }
                     val wh = ex.stackTrace.find { ste -> ste.className == this.javaClass.name }?.let { ste -> "${ste.className}:${ste.lineNumber}" }
                     warn("got exception: ${ex.message} in $wh")
+                    ex.printStackTrace()
                     if (firstrun) {
                         ImapMailer.sendMail("error in startup","${ex.message}\n${ex.stackTrace.joinToString("\n") {ste -> ste.toString()}}")
                         System.exit(1)

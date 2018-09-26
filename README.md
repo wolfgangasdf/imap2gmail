@@ -14,9 +14,8 @@ I wrote this little program because (i) normal GMail doesn't poll IMAP servers a
 The "JRE server" is also fine. OpenJDK is not tested.
 * Download the [jar](https://bitbucket.org/wolfgang/imap2gmail/downloads) or `wget https://bitbucket.org/wolfgang/imap2gmail/downloads/imap2gmail.jar`
 * Generate your own GMail API keys for imap2gmail, see below.
-* Double click the jar or better run `java -jar imap2gmail.jar`.
+* Double click the jar or better run `java -Xmx256m -jar imap2gmail.jar`. The Xmx increases the heap space to max. 256MB which is needed for large messages.
 * After the first start, the settings file `imap2gmail.txt` will be created, which you have to edit. See below.
-* On the IMAP server, create a folder `nowingmail`.
 * On the second start, you have to give imap2gmail access to your gmail account, follow the instructions.
 * I run imap2gmail in a [GNU screen](https://en.wikipedia.org/wiki/GNU_Screen) that is started automatically.
 

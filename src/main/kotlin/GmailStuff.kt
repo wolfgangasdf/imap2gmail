@@ -87,9 +87,9 @@ object GmailStuff {
                                     return true
                                 }
                             })
-            req1.mediaHttpUploader.setProgressListener({ uploader ->
+            req1.mediaHttpUploader.setProgressListener { uploader ->
                 debug("[${uploader.uploadState}] Progress: ${(uploader.progress * 100).roundToInt()}")
-            })
+            }
 
             val res1 = req1.execute()
             debug("done (${res1.id}), adding labels INBOX and UNREAD...")
