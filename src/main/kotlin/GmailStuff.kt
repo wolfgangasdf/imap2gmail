@@ -12,10 +12,7 @@ import com.google.api.client.util.store.FileDataStoreFactory
 import com.google.api.services.gmail.Gmail
 import com.google.api.services.gmail.GmailScopes
 import com.google.api.services.gmail.model.ModifyMessageRequest
-import java.io.ByteArrayInputStream
-import java.io.ByteArrayOutputStream
-import java.io.IOException
-import java.io.InputStream
+import java.io.*
 import javax.mail.Message
 import kotlin.math.roundToInt
 import com.google.api.services.gmail.model.Message as GmailAPIMessage
@@ -48,7 +45,7 @@ object GmailStuff {
         // Build flow and trigger user authorization request.
         val flow = GoogleAuthorizationCodeFlow.Builder(
                 HTTP_TRANSPORT, JSON_FACTORY, Imap2Gmail.gmailclientid, Imap2Gmail.gmailclientsecret, SCOPES)
-                .setDataStoreFactory(FileDataStoreFactory(java.io.File(CREDENTIALS_FOLDER)))
+                .setDataStoreFactory(FileDataStoreFactory(File(CREDENTIALS_FOLDER)))
                 .setAccessType("offline")
                 .build()
 //        return AuthorizationCodeInstalledApp(flow, LocalServerReceiver()).authorize("user") // doesn't work through firewalls
@@ -61,9 +58,13 @@ object GmailStuff {
             //testing throw InterruptedException("test")
             // get rfc822 raw form of javax message and insert into gmailmessage
             debug("downloading message from IMAP...")
-            val output = ByteArrayOutputStream()
-            message.writeTo(output)
-            val rawEmail = output.toByteArray()
+            val tmpf = createTempFile("imap2gmailtmp")
+            val outputs = FileOutputStream(tmpf)
+            message.writeTo(outputs)
+            val msgsize = outputs.channel.position()
+            debug("downloaded: $msgsize ${tmpf.length()} $tmpf")
+            outputs.close()
+            val inputs = FileInputStream(tmpf)
             debug("importing into gmail...")
             val service = getService()
             val req1 = service.users().messages()
@@ -73,12 +74,12 @@ object GmailStuff {
 
                                 @Throws(IOException::class)
                                 override fun getInputStream(): InputStream {
-                                    return ByteArrayInputStream(rawEmail)
+                                    return inputs
                                 }
 
                                 @Throws(IOException::class)
                                 override fun getLength(): Long {
-                                    return rawEmail.size.toLong()
+                                    return msgsize
                                 }
 
                                 override fun retrySupported(): Boolean {
@@ -90,7 +91,8 @@ object GmailStuff {
             }
 
             val res1 = req1.execute()
-            output.close()
+            inputs.close()
+            tmpf.delete()
             debug("done (${res1.id}), adding labels INBOX and UNREAD...")
 
             val req2 = service.users().messages().modify("me", res1.id, ModifyMessageRequest().setAddLabelIds(listOf("INBOX", "UNREAD")))
