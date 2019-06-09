@@ -8,6 +8,7 @@ fun getTimestamp(): String = SimpleDateFormat("yyyyMMdd-HH:mm:ss").format(Date()
 
 fun warn(s: String) { println("[${getTimestamp()}][${Thread.currentThread().id}] " + s) }
 fun debug(s: String) { warn(s) }
+fun stacktraceString(e: java.lang.Exception) = e.stackTrace.joinToString("\n") {ste -> ste.toString()}
 
 object Imap2Gmail {
     val imapprotocol = Settings.getOrSet("imapprotocol", "imap or imaps")
@@ -27,8 +28,9 @@ object Imap2Gmail {
     val mailsmtpport = Settings.getOrSet("mailsmtpport", "smtp port or -1 for default").toInt()
     val mailsmtpuser = Settings.getOrSet("mailsmtpuser", "smtp username or emtpy")
     val mailsmtppass = Settings.getOrSet("mailsmtppass", "smtp password or emtpy")
+    private val maxemailsize = Settings.getOrSet("maxemailsize", "20000000").toInt()
 
-    private const val IDLEMS = 5*60*1000L // ms after which the IMAP idle command is interrupted/refreshed.
+    const val IDLEMS = 5*60*1000L // ms after which the IMAP idle command is interrupted/refreshed.
     private const val IDLEMSTIMEOUTFACT = 2.5 // timeout after IDLEMSTIMEOUTFACT*IDLEMS
 
     fun doit() { // NEVER put this in init, must return from init (can't access variables from launched thread there!)
@@ -61,7 +63,7 @@ object Imap2Gmail {
 
                         if (mainThread?.isAlive == true) {
                             debug("interrupting mainThread[${mainThread?.id}]!")
-                            mainThread?.interrupt() // TODO can't interrupt idle() command, mainThread is useless...
+                            mainThread?.interrupt()
                         }
                     }
                 } else if (errorState) {
@@ -74,10 +76,10 @@ object Imap2Gmail {
 
         var firstrun = true
         while (true) {
-            mainThread = thread(start = true, name = "mainThread") {
+            mainThread = thread(start = true, name = "mainThread") { // remove? can't interrupt idle() command above, mainThread is useless...
                 warn("mainThread start, connecting...")
                 try {
-                    GmailStuff.initialize()
+                    GmailStuff.testit()
                     ImapStuff.initialize()
 
                     if (firstrun) {
@@ -92,27 +94,33 @@ object Imap2Gmail {
                         while (ImapStuff.folder.messageCount > 0) {
                             val msgs = ImapStuff.folder.messages
                             debug("Have messages: " + msgs.size)
-                            msgs.reversed().forEach { m ->
-                                debug(" Handling message: ${m.messageNumber}: ${m.subject}")
+                            msgs.reversed().forEach { m -> // reversed: if i2g killed by OOM, try newer messages first!
+                                debug(" Handling message: ${m.messageNumber}: ${m.subject} size=${m.size}")
                                 try {
-                                    //testing ImapStuff.store.close()
+                                    // mid = m.getHeader("Message-ID")?.firstOrNull()
+                                    if (m.size > maxemailsize) throw Exception("Mail too large (${m.size} > maxemailsize)")
                                     GmailStuff.importMessage(m)
-                                    // if successful, move to some folder!
+                                    // if successful, move to foldermoveto!
                                     ImapStuff.folder.copyMessages(arrayOf(m), ImapStuff.foldermoveto)
                                     m.setFlag(Flags.Flag.DELETED, true)
                                     ImapStuff.folder.expunge()
                                     debug("successfully imported into gmail and moved to folder $imapfoldermoved!")
                                 } catch (e: Exception) {
-                                    warn("exception importmessage!!!! " + e.message)
+                                    warn("exception importmessage: ${e.message}")
                                     e.printStackTrace()
                                     warn("trying to move message to quarantine folder on imap... ${ImapStuff.folderquarantine}")
                                     ImapStuff.folder.copyMessages(arrayOf(m), ImapStuff.folderquarantine)
                                     m.setFlag(Flags.Flag.DELETED, true)
                                     ImapStuff.folder.expunge()
-                                    ImapMailer.sendMail("Message move to quarantine", "One message has been moved to quarantine folder on the IMAP server.")
+                                    ImapMailer.sendMail("Message moved to quarantine",
+                                            "One message has been moved to folder ${ImapStuff.folderquarantine} on the IMAP server.\n" +
+                                                    "Exception: ${e.message}"
+                                    )
                                     warn("message moved to quarantine.")
                                 }
                             }
+                            System.gc()
+                            Thread.sleep(1000)
                         }
                         // start watchThreadIdle which stops idle after IDLEMS by requesting message count
                         watchThreadIdle = thread(start = true, name = "watchThreadIdle") {
@@ -146,10 +154,11 @@ object Imap2Gmail {
                     warn("got exception: ${ex.message} in $wh")
                     ex.printStackTrace()
                     if (firstrun) {
-                        ImapMailer.sendMail("error in startup","${ex.message}\n${ex.stackTrace.joinToString("\n") {ste -> ste.toString()}}")
+                        ImapMailer.sendMail("error in startup","${ex.message}\n in $wh\n${stacktraceString(ex)}")
                         System.exit(1)
                     }
-                    Thread.sleep(60000) // run every minute max.
+                    warn("sleep for 60s")
+                    Thread.sleep(60000)
                 }
                 warn("mainThread: end")
             }

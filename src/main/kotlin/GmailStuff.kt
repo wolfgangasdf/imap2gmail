@@ -28,8 +28,6 @@ object GmailStuff {
     private val JSON_FACTORY = JacksonFactory.getDefaultInstance()
     private const val CREDENTIALS_FOLDER = "credentials" // Directory to store user credentials.
 
-    private var service: Gmail? = null
-
     // If modifying these scopes, delete your previously saved credentials/ folder.
     private val SCOPES = listOf(GmailScopes.GMAIL_LABELS, GmailScopes.GMAIL_MODIFY, GmailScopes.GMAIL_INSERT)
 
@@ -47,7 +45,6 @@ object GmailStuff {
      */
     @Throws(IOException::class)
     private fun getCredentials(HTTP_TRANSPORT: NetHttpTransport): Credential {
-
         // Build flow and trigger user authorization request.
         val flow = GoogleAuthorizationCodeFlow.Builder(
                 HTTP_TRANSPORT, JSON_FACTORY, Imap2Gmail.gmailclientid, Imap2Gmail.gmailclientsecret, SCOPES)
@@ -68,7 +65,8 @@ object GmailStuff {
             message.writeTo(output)
             val rawEmail = output.toByteArray()
             debug("importing into gmail...")
-            val req1 = service!!.users().messages()
+            val service = getService()
+            val req1 = service.users().messages()
                     .gmailImport("me",
                             GmailAPIMessage(),
                             object : AbstractInputStreamContent("message/rfc822") {
@@ -92,9 +90,10 @@ object GmailStuff {
             }
 
             val res1 = req1.execute()
+            output.close()
             debug("done (${res1.id}), adding labels INBOX and UNREAD...")
 
-            val req2 = service!!.users().messages().modify("me", res1.id, ModifyMessageRequest().setAddLabelIds(listOf("INBOX", "UNREAD")))
+            val req2 = service.users().messages().modify("me", res1.id, ModifyMessageRequest().setAddLabelIds(listOf("INBOX", "UNREAD")))
             req2.execute()
             debug("done!")
         } catch (e: GoogleJsonResponseException) {
@@ -108,16 +107,17 @@ object GmailStuff {
         }
     }
 
-    fun initialize() {
+    private fun getService(): Gmail {
         warn("initialize gmail...")
         val httpTransport = GoogleNetHttpTransport.newTrustedTransport()
-        //tesging throw InterruptedException("test")
-        service = Gmail.Builder(httpTransport, JSON_FACTORY, getCredentials(httpTransport))
+        return Gmail.Builder(httpTransport, JSON_FACTORY, getCredentials(httpTransport))
                 .setApplicationName(APPLICATION_NAME)
                 .build()
+    }
 
-        // test connection
-        val res = service!!.users().labels().list("me").execute()
+    fun testit() {
+        // do this to catch connection errors already on startup, otherwise only called later!
+        val res = getService().users().labels().list("me").execute()
         warn("gmail initialized, have ${res.labels.size} labels!")
     }
 }

@@ -38,7 +38,7 @@ object Settings {
             }
         } catch (e: Exception) {
             warn("Error loading settings, file: ${configfile.path}: ${e.message}")
-            java.lang.System.exit(1)
+            System.exit(1)
         }
 
     }

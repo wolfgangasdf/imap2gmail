@@ -1,3 +1,4 @@
+import Imap2Gmail.IDLEMS
 import Imap2Gmail.imapfolder
 import Imap2Gmail.imapfoldermoved
 import Imap2Gmail.imapfolderquarantine
@@ -51,14 +52,10 @@ object ImapStuff {
     fun initialize() {
         warn("initialize imap...")
         val props = System.getProperties()
-        // TODO connect to idle time?
-        props.setProperty("mail.$imapprotocol.timeout", (6*60*1000).toString()) // Socket I/O timeout value in milliseconds. Default is infinite timeout.
-        props.setProperty("mail.$imapprotocol.writetimeout", "5000") //
-        props.setProperty("mail.$imapprotocol.connectiontimeout", (6*60*1000).toString()) // Socket connection timeout value in milliseconds. Default is infinite timeout.
-
-        //testing throw InterruptedException("test")
-
-        props.setProperty("mail.$imapprotocol.partialfetch", "false") // otherwise, very large emails come in very slowly and this times out!
+        props.setProperty("mail.$imapprotocol.timeout", (1.5*IDLEMS).toInt().toString()) // Socket I/O timeout value in milliseconds. Default is infinite timeout.
+        props.setProperty("mail.$imapprotocol.connectiontimeout", (1.5*IDLEMS).toInt().toString()) // Socket connection timeout value in milliseconds. Default is infinite timeout.
+        props.setProperty("mail.$imapprotocol.writetimeout", "5000") // Socket write timeout value in milliseconds, creates watch thread.
+        props.setProperty("mail.$imapprotocol.partialfetch", "false") // otherwise, very large emails come in very slowly and it times out!
 
         session = Session.getInstance(props, null)
         session.debug = false // VERY HELPFUL!
