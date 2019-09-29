@@ -1,12 +1,11 @@
 import java.io.File
 import java.nio.file.Files
 import java.util.*
+import kotlin.system.exitProcess
 
 object Settings {
 
-    private val jarfile = File(this::class.java.protectionDomain.codeSource.location.toURI().path)
-    private val configfolder: String = if (jarfile.toString().endsWith(".jar")) jarfile.parent else File(".").absoluteFile.parent
-    private val configfile = File(configfolder + File.separator + "imap2gmail.txt")
+    private val configfile = File(System.getProperty("user.home") + File.separator + "imap2gmail-settings.txt")
 
     private val settings = LinkedHashMap<String, String>() // java.Properties stores unsorted, not nice
 
@@ -38,7 +37,7 @@ object Settings {
             }
         } catch (e: Exception) {
             warn("Error loading settings, file: ${configfile.path}: ${e.message}")
-            System.exit(1)
+            exitProcess(1)
         }
 
     }

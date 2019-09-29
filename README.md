@@ -10,16 +10,11 @@ I wrote this little program because (i) normal GMail doesn't poll IMAP servers a
 
 # How to use
 
-* Get the [Java JRE](http://www.oracle.com/technetwork/java/javase/downloads/index.html) >= 8u101. Don't forget to untick the [crapware](https://www.google.com/search?q=java+crapware) installer, and/or [disable it permanently](https://www.java.com/en/download/faq/disable_offers.xml)!
-The "JRE server" is also fine. OpenJDK is not tested.
-* Download the [jar](https://github.com/wolfgangasdf/imap2gmail/releases) or `wget https://github.com/wolfgangasdf/imap2gmail/releases/download/SNAPSHOT/imap2gmail.jar`
 * Generate your own GMail API keys for imap2gmail, see below.
-* Double click the jar or better run `while : ; do java -Xmx256m -XX:MaxHeapFreeRatio=10 -XX:MinHeapFreeRatio=10 -jar imap2gmail.jar ; sleep 60 ; done`.
-  * `Xmx` increases the heap space to max. 256MB which is needed for large messages.
-  * `XX:*HeapFreeRatio=10` frees heap more often.
-  * The while loop is for low-end systems, where the jvm can be killed due to out-of-memory. Not a good solution though.
-* After the first start, the settings file `imap2gmail.txt` will be created, which you have to edit. See below.
-* On the second start, you have to give imap2gmail access to your gmail account, follow the instructions.
+* Download and extract the [zip](https://github.com/wolfgangasdf/imap2gmail/releases) or `wget https://github.com/wolfgangasdf/imap2gmail/releases/download/SNAPSHOT/imap2gmail-linux.zip`. It is so large because it contains a Java runtime environment.
+* Run `imap2gmail-linux/bin/imap2gmail` or `while : ; do imap2gmail-linux/bin/imap2gmail ; sleep 60 ; done` (for low-end systems, where the jvm can be killed due to out-of-memory). 
+* After the first start, the settings file `~/imap2gmail-settings.txt` will be created, which you have to edit. See below.
+* On the second start, you have to give imap2gmail access to your gmail account, follow the instructions (note: in browser, click `advanced`, then `proceed...`).
 * I run imap2gmail in a [GNU screen](https://en.wikipedia.org/wiki/GNU_Screen) that is started automatically.
 
 ## GMail API keys
@@ -34,7 +29,7 @@ Follow https://developers.google.com/gmail/api/quickstart/java , which means:
 5. Select the application type `Other`, enter the name `imap2gmail`, and click the Create button.
 6. Copy and paste the client id and secret id into the imap2gmail.txt settings.
 
-## Example imap2gmail.txt settings file
+## Example settings file
 
 ~~~~
 # the server from which emails are pulled
@@ -63,17 +58,18 @@ maxemailsize=20000000
 
 # How to develop, compile & package
 
-* Get Java JDK >= 8u101 and [gradle](https://gradle.org/install/)
+* Get Java JDK >= 13 and [gradle](https://gradle.org/install/)
 * check out the code (`git clone ...` or download a zip)
 * I use the free community version of [IntelliJ IDEA](https://www.jetbrains.com/idea/download/), just open the project to get started.
-
-Package it:
-
-* run `gradle dist`. The resulting jar is `build/libs/imap2gmail.jar`
+* Run: `gradle run`
+* Package:
+  * Download a suitable JDK for the target platform (if not same as development) from https://jdk.java.net/13/
+  * Point to it `JDK_LINUX_HOME=/.../openjdk-13_linux-x64/` 
+  * `gradle runtimeZip`. The resulting (~40 MB) ZIP file is `build/image-zip/imap2gmail-linux.zip`
 
 
 # Used frameworks #
 
 * [Kotlin](https://kotlinlang.org)
 * [JavaMail](https://javaee.github.io/javamail/)
-* [Shadow](https://github.com/johnrengelman/shadow) to make a fat jar
+* [Beryx runtime](https://badass-runtime-plugin.beryx.org) to create the app image with JRE etc.

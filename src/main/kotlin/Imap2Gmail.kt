@@ -3,6 +3,7 @@ import java.util.*
 import java.util.concurrent.atomic.AtomicLong
 import javax.mail.Flags
 import kotlin.concurrent.thread
+import kotlin.system.exitProcess
 
 fun getTimestamp(): String = SimpleDateFormat("yyyyMMdd-HH:mm:ss").format(Date())
 
@@ -37,8 +38,11 @@ object Imap2Gmail {
         if (Settings.error) {
             Settings.save()
             warn("Check settings file and restart, see README.md!")
-            System.exit(1)
+            exitProcess(1)
         }
+
+        // run auth first time asynchronously!
+        GmailStuff.testit()
 
         var mainThread: Thread? = null
         var watchThreadIdle: Thread? = null
@@ -146,18 +150,24 @@ object Imap2Gmail {
                     }
                 } catch (ex: Exception) {
                     warn("Main loop got exception!")
-                    if (watchThreadIdle?.isAlive == true) {
-                        debug("interrupting watchThreadIdle[${watchThreadIdle?.id}]!")
-                        watchThreadIdle?.interrupt()
+                    try {
+                        if (watchThreadIdle?.isAlive == true) {
+                            debug("interrupting watchThreadIdle[${watchThreadIdle?.id}]!")
+                            watchThreadIdle?.interrupt()
+                        }
+                        val wh = ex.stackTrace.find { ste -> ste.className == this.javaClass.name }?.let { ste -> "${ste.className}:${ste.lineNumber}" }
+                        warn("got exception: ${ex.message} in $wh")
+                        ex.printStackTrace()
+                        if (firstrun) {
+                            ImapMailer.sendMail("error in startup","${ex.message}\n in $wh\n${stacktraceString(ex)}")
+                            exitProcess(1)
+                        }
+                        warn("sleep for 60s")
+                    } catch (ex2: Exception) {
+                        warn("got another exception in exception handler:" + ex2.message)
+                        ex2.printStackTrace()
+                        exitProcess(1)
                     }
-                    val wh = ex.stackTrace.find { ste -> ste.className == this.javaClass.name }?.let { ste -> "${ste.className}:${ste.lineNumber}" }
-                    warn("got exception: ${ex.message} in $wh")
-                    ex.printStackTrace()
-                    if (firstrun) {
-                        ImapMailer.sendMail("error in startup","${ex.message}\n in $wh\n${stacktraceString(ex)}")
-                        System.exit(1)
-                    }
-                    warn("sleep for 60s")
                     Thread.sleep(60000)
                 }
                 warn("mainThread: end")
