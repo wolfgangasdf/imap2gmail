@@ -21,10 +21,6 @@ plugins {
     id("com.github.johnrengelman.shadow") version "5.1.0"
 }
 
-tasks.withType<Wrapper> {
-    gradleVersion = "5.3.1"
-}
-
 application {
     mainClassName = "MainKt"
     applicationDefaultJvmArgs = listOf("-Xmx256m", "-XX:MaxHeapFreeRatio=10", "-XX:MinHeapFreeRatio=10")
