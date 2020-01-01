@@ -1,7 +1,6 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
-val kotlinversion = "1.3.50"
+val kotlinversion = "1.3.61"
 
 buildscript {
     repositories {
@@ -12,13 +11,19 @@ buildscript {
 group = "com.wolle"
 version = "1.0-SNAPSHOT"
 
+println("Current Java version: ${JavaVersion.current()}")
+java {
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
+    if (JavaVersion.current().toString() != "13") throw GradleException("Use Java 13")
+}
+
 plugins {
-    kotlin("jvm") version "1.3.50"
+    kotlin("jvm") version "1.3.61"
     id("idea")
     application
-    id("org.beryx.runtime") version "1.6.0"
-    id("com.github.ben-manes.versions") version "0.21.0"
-    id("com.github.johnrengelman.shadow") version "5.1.0"
+    id("com.github.ben-manes.versions") version "0.27.0"
+    id("org.beryx.runtime") version "1.8.0"
 }
 
 application {
@@ -41,44 +46,22 @@ runtime {
 //    targetPlatform("win", System.getenv("JDK_WIN_HOME"))
 }
 
-tasks.withType<Jar> {
-    manifest {
-        attributes(mapOf(
-                "Description" to "imap2gmail jar",
-                "Implementation-Title" to "Imap2Gmail",
-                "Implementation-Version" to version,
-                "Main-Class" to "MainKt"
-        ))
-    }
-}
-
-tasks.withType<ShadowJar> {
-    // uses manifest from above!
-    baseName = "imap2gmail"
-    classifier = ""
-    version = ""
-    mergeServiceFiles() // essential to enable flac etc
-}
-
-//////////////////
-
-
 repositories {
     mavenCentral()
 }
 
 dependencies {
-    compile("org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlinversion")
+    compile("org.jetbrains.kotlin:kotlin-stdlib:$kotlinversion")
     compile("org.jetbrains.kotlin:kotlin-reflect:$kotlinversion")
-    compile("io.github.microutils:kotlin-logging:1.6.26")
+    compile("io.github.microutils:kotlin-logging:1.7.8")
     compile("org.slf4j:slf4j-simple:1.8.0-beta4") // no colors, everything stderr
     compile("javax.mail:javax.mail-api:1.6.2")
     compile("com.sun.mail:javax.mail:1.6.2")
 
     // https://developers.google.com/gmail/api/quickstart/java
-    compile("com.google.api-client:google-api-client:1.29.2")
-    compile("com.google.oauth-client:google-oauth-client-jetty:1.30.1")
-    compile("com.google.apis:google-api-services-gmail:v1-rev20190422-1.28.0")
+    compile("com.google.api-client:google-api-client:1.30.7")
+    compile("com.google.oauth-client:google-oauth-client-jetty:1.30.5")
+    compile("com.google.apis:google-api-services-gmail:v1-rev20191113-1.30.3")
 }
 
 tasks.withType<KotlinCompile> {
@@ -86,6 +69,6 @@ tasks.withType<KotlinCompile> {
 }
 
 task("dist") {
-    dependsOn("shadowJar") // fat jar
+    dependsOn("runtimeZip")
 }
 
