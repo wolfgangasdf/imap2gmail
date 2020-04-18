@@ -55,20 +55,21 @@ object Imap2Gmail {
                 if (currms - lastIdle.get() > IDLEMSTIMEOUTFACT*IDLEMS) {
                     if (!errorState) {
                         warn("watchThread: idle too long ago! ${currms - lastIdle.get()} > ${IDLEMSTIMEOUTFACT*IDLEMS}")
-                        ImapMailer.sendMail("Idle timeout!", "Didn't IDLE for ${(currms - lastIdle.get())/(1000*60)} minutes.\n" +
-                                "Check that imap2gmail is working properly, possibly the IMAP server is temporarily down.\n" +
-                                "I will send another email if it works again!")
                         errorState = true
 
+                        // first kill, then try to send email because sending email could also hang.
                         if (watchThreadIdle?.isAlive == true) {
                             debug("interrupting watchThreadIdle[${watchThreadIdle?.id}]!")
                             watchThreadIdle?.interrupt()
                         }
-
                         if (mainThread?.isAlive == true) {
                             debug("interrupting mainThread[${mainThread?.id}]!")
                             mainThread?.interrupt()
                         }
+
+                        ImapMailer.sendMail("Idle timeout!", "Didn't IDLE for ${(currms - lastIdle.get())/(1000*60)} minutes.\n" +
+                                "Check that imap2gmail is working properly, possibly the IMAP server is temporarily down.\n" +
+                                "I will send another email if it works again!")
                     }
                 } else if (errorState) {
                     ImapMailer.sendMail("Idle succeeded!", "Idle succeeded, everything normal again.")

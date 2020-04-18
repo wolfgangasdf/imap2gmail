@@ -61,11 +61,11 @@ maxemailsize=20000000
 * Get Java 13 from https://jdk.java.net
 * check out the code (`git clone ...` or download a zip)
 * I use the free community version of [IntelliJ IDEA](https://www.jetbrains.com/idea/download/), just open the project to get started.
-* Run: `gradle run`
+* Run: `./gradlew run`
 * Package:
   * Download a suitable JDK for the target platform (if not same as development) from https://jdk.java.net/13/
   * Point to it `JDK_LINUX_HOME=/.../openjdk-13_linux-x64/` 
-  * `gradle dist`. The resulting (~40 MB) ZIP file is `build/image-zip/imap2gmail-linux.zip`
+  * `./gradlew clean dist`. The resulting (~40 MB) ZIP file is `build/image-zip/imap2gmail-linux.zip`
 
 
 # Used frameworks #
